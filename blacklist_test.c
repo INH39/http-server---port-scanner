@@ -8,6 +8,11 @@
 
 
 // simulated ip addresses to test server's blacklist
+
+// would actually require raw sockets, so this will not work
+
+// so this is more for testing rate limiting aspect than multiple ip connections
+
 const char *fake_ips[] = {
     "192.168.1.100",
     "192.168.1.101",
@@ -71,7 +76,6 @@ const char *fake_ips[] = {
 #define SERVER_PORT 8080
 
 
-// test server's blacklist using IP rotation and a delay to avoid detection
 void attack_server();
 
 
@@ -81,12 +85,11 @@ void attack_server(){
 
     printf("Starting IP rotation attack . . .\n");
 
-    for(int i = 0; i < FAKE_IP_COUNT; i++){
+    for(unsigned int i = 0; i < FAKE_IP_COUNT; i++){ 
         sock = socket(AF_INET, SOCK_STREAM, 0);
         if(sock < 0){
             perror("Socket creation failed.\n");
 
-            // continue connections with other ip addresses
             continue;
         }
 
@@ -94,7 +97,7 @@ void attack_server(){
         server_addr.sin_port = htons(SERVER_PORT);
         inet_pton(AF_INET, SERVER_IP, &server_addr.sin_addr);
 
-        // simulate changing ip address (IRL it requires raw sockets)
+        // simulate changing ip address (would actually require raw sockets)
         printf("Attempt #%d - Simulating connection from %s\n", i + 1, fake_ips[i]);
 
         if(connect(sock, (struct sockaddr*) &server_addr, sizeof(server_addr)) < 0){
@@ -104,12 +107,13 @@ void attack_server(){
             printf("Connection was a success.\n");
             close(sock);
         }
-        sleep(1); // delay
+        sleep(1);
     }
 }
 
 
 int main(){
+
     attack_server();
 
     return 0;
