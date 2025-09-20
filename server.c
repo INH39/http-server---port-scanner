@@ -52,7 +52,7 @@ int main(){
             printf("Client connected\n");
 
             pthread_t thread_id;
-            if(pthread_create(&thread_id, NULL, client_handler, (void *) &client_fd) != 0){
+            if(pthread_create(&thread_id, NULL, client_handler, (void*)(intptr_t) client_fd) != 0){
                 perror("Thread creation failed");
 
                 continue;
@@ -300,7 +300,7 @@ int setup_server(int port){
 
 
 void *client_handler(void *arg){
-    int client_fd = * (int *) arg;
+    int client_fd = (int)(intptr_t) arg;
     handle_request(client_fd);
     //exit thread when request is handled
     pthread_exit(NULL);
