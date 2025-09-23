@@ -9,7 +9,8 @@
 
 // simulated ip addresses to test server's blacklist
 
-// would actually require raw sockets, so this will not work
+// will not work, but could simulate diff ip addresses with 
+// containers / vms or cloud instances
 
 // so this is more for testing rate limiting aspect than multiple ip connections
 
