@@ -5,7 +5,8 @@
 #include <arpa/inet.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <fcntl.h> 
+#include <fcntl.h>
+#include <sys/stat.h>
 
 
 #define MAX_ATTEMPTS 5
@@ -175,18 +176,26 @@ void handle_request(int client_fd){
         int file_fd = open(filepath + 1, O_RDONLY);
         if(file_fd < 0){
             // file not found
-            char response[] = "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\n\r\n"
+            char response[] = "HTTP/1.1 404 Not found\r\nContent-Type: text/html\r\nConnection: close\r\n\r\n"
                                 "<html><body><h1>404 not found</h1></body></html>";
-            bytes_sent = send(client_fd, response, sizeof(response), 0);
+            bytes_sent = send(client_fd, response, strlen(response), 0);
             if(bytes_sent < 0){
                 perror("Send failed");
             }
         }
         else{
+            struct stat file_stat;
+            fstat(file_fd, &file_stat);
+            long file_size = file_stat.st_size;
+
             char header[1024];
-            //format header
-            snprintf(header, sizeof(header), "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n");
-            bytes_sent = send(client_fd, header, sizeof(header), 0);
+            snprintf(header, sizeof(header),
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/html\r\n"
+                "Content-Length: %ld\r\n"
+                "Connection: close\r\n"
+                "\r\n", file_size);
+            bytes_sent = send(client_fd, header, strlen(header), 0);
             if(bytes_sent < 0){
                 perror("Send failed");
                 close(file_fd);
@@ -244,7 +253,7 @@ void handle_request(int client_fd){
             // send response
             char response[] = "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n"
                             "<html><body><h1>POST Request Received</h1></body></html>";
-            bytes_sent = send(client_fd, response, sizeof(response), 0);
+            bytes_sent = send(client_fd, response, strlen(response), 0);
             if(bytes_sent < 0){
                 perror("Send failed");
             }
@@ -253,7 +262,7 @@ void handle_request(int client_fd){
             // no data in request
             char response[] = "HTTP/1.1 400 Bad Request\r\nContent-Type: text/html\r\n\r\n"
                             "<html><body><h1>400 Bad Request</h1><p>Missing Content-Length header.</p></body></html>";
-            bytes_sent = send(client_fd, response, sizeof(response), 0);
+            bytes_sent = send(client_fd, response, strlen(response), 0);
             if(bytes_sent < 0){
                 perror("Send failed");
             }
@@ -276,6 +285,12 @@ int setup_server(int port){
     server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd < 0){
         perror("Socket creation failed");
+        exit(EXIT_FAILURE);
+    }
+
+    int opt = 1;
+    if(setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0){
+        perror("setsockopt failed");
         exit(EXIT_FAILURE);
     }
 
